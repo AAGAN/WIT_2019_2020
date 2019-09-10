@@ -5,7 +5,6 @@
 File myFile;
 
 const int chipSelect = BUILTIN_SDCARD; //for the SD card
-const int LED = 13;
 
 const int TFT_CS = 10;
 const int TFT_DC = 9;
@@ -16,7 +15,7 @@ int numCycles;
 int holdTime;
 int minPressure;
 int counter = 1;
-const int NumPoints = 390;
+const int NumPoints = 400;
 #define BLUE      0x001F
 #define GREEN     0x07E0
 #define RED       0xF800
@@ -26,32 +25,37 @@ const int NumPoints = 390;
 #define BLACK     0x0000
 #define DKBLUE    0x000D
 #define ADJ_PIN A0
+#define tempPin A2
 
 double vo;
+double temp;
 
 Adafruit_HX8357 tft = Adafruit_HX8357(TFT_CS, TFT_DC);
 
 boolean display7 = true;
 int leng = NumPoints - 1;
 double xox[NumPoints] , xoy[NumPoints] ;
+double toy[NumPoints] ;
 double ox,oy;
+double tempy;
 void setup()
 {
   
-  pinMode(LED, OUTPUT);
-  digitalWrite(LED, HIGH);
+ // pinMode(LED, OUTPUT);
+ // digitalWrite(LED, HIGH);
   Serial.begin(9600);
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for Leonardo only
-  }
+//  while (!Serial) {
+//    ; // wait for serial port to connect. Needed for Leonardo only
+//  }
   //Serial.print("Initializing SD card...");
-
+delay(1000);
   if (!SD.begin(chipSelect)) {
     Serial.println("initialization failed!");
     return;
   }
 
   pinMode(ADJ_PIN, INPUT);
+  pinMode(tempPin, INPUT);
   tft.begin(HX8357D);
   tft.fillScreen(BLACK);
   //Serial.println("initialization done.");
@@ -158,9 +162,9 @@ void setup()
     Serial.println(holdTime);
     Serial.print("minPressure = ");
     Serial.println(minPressure);
-  digitalWrite(LED,LOW);
+//  digitalWrite(LED,LOW);
 
-    double x, y;
+    double x, t;
 
 
   tft.setRotation(3);
@@ -170,7 +174,9 @@ x=0;
   while(1) {
 x++;
 vo = analogRead(ADJ_PIN)/1023.0;
-      Graph(tft, x, vo, 50, 290, 390, 260, 0, NumPoints, int(NumPoints/6), 0, 1.01, 0.1, "Normalized P-T", " Cycle ", "", DKBLUE, RED, GREEN, WHITE, BLACK, display7,x);
+temp = analogRead(tempPin)/1023.0;
+    Graph(tft, x, vo  , 30, 290, NumPoints, 260, 0, NumPoints, int(NumPoints/10), 0, 1.01, 0.1, "P-T", " Cycle ", "", DKBLUE, RED, GREEN, WHITE, BLACK, display7,x,0);
+    Graph(tft, x, temp, 30, 290, NumPoints, 260, 0, NumPoints, int(NumPoints/10), 0, 1.01, 0.1, "P-T", " Cycle ", "", DKBLUE, RED, YELLOW, WHITE, BLACK, display7,x,1);
     delay(10);
     if(x==leng)x=0;
   }
@@ -209,7 +215,7 @@ void loop()
 	// nothing happens after setup
 }
 
-void Graph(Adafruit_HX8357 &d, double x, double y, double gx, double gy, double w, double h, double xlo, double xhi, double xinc, double ylo, double yhi, double yinc, String title, String xlabel, String ylabel, unsigned int gcolor, unsigned int acolor, unsigned int pcolor, unsigned int tcolor, unsigned int bcolor, boolean &redraw, int jj) {
+void Graph(Adafruit_HX8357 &d, double x, double y, double gx, double gy, double w, double h, double xlo, double xhi, double xinc, double ylo, double yhi, double yinc, String title, String xlabel, String ylabel, unsigned int gcolor, unsigned int acolor, unsigned int pcolor, unsigned int tcolor, unsigned int bcolor, boolean &redraw, int jj, int dataType) {
 
   //double ydiv, xdiv;
   // initialize old x and old y in order to draw the first point of the graph
@@ -240,9 +246,9 @@ void Graph(Adafruit_HX8357 &d, double x, double y, double gx, double gy, double 
 
       d.setTextSize(1);
       d.setTextColor(tcolor, bcolor);
-      d.setCursor(gx - 40, temp);
+      d.setCursor(gx - 25, temp);
       // precision is default Arduino--this could really use some format control
-      d.println(i);
+      d.println(i,1);
     }
     // draw x scale
     for (i = xlo; i <= xhi; i += xinc) {
@@ -261,7 +267,7 @@ void Graph(Adafruit_HX8357 &d, double x, double y, double gx, double gy, double 
       d.setTextColor(tcolor, bcolor);
       d.setCursor(temp, gy + 10);
       // precision is default Arduino--this could really use some format control
-      d.println(i);
+      d.println(i,0);
     }
 
     //now draw the labels
@@ -291,9 +297,18 @@ void Graph(Adafruit_HX8357 &d, double x, double y, double gx, double gy, double 
 //  d.drawLine(ox, oy, x, y, pcolor);
 //  d.drawLine(ox, oy + 1, x, y + 1, pcolor);
 //  d.drawLine(ox, oy - 1, x, y - 1, pcolor);
+if (dataType == 0)//Pressure on A0
+ {
   d.drawPixel(xox[jj],xoy[jj],bcolor);
   d.drawPixel(x,y,pcolor);
   xox[jj] = x;
   xoy[jj] = y;
-
+ }
+ else if (dataType = 1)//temperature on A1
+ {
+  d.drawPixel(xox[jj],toy[jj],bcolor);
+  d.drawPixel(x,y,pcolor);
+  xox[jj] = x;
+  toy[jj] = y;
+ }
 }
