@@ -26,6 +26,8 @@ const int NumPoints = 400;
 #define DKBLUE    0x000D
 #define ADJ_PIN A0
 #define tempPin A2
+#define cycAdjPin A9
+#define ledPin 17
 
 double vo;
 double temp;
@@ -33,11 +35,12 @@ double temp;
 Adafruit_HX8357 tft = Adafruit_HX8357(TFT_CS, TFT_DC);
 
 boolean display7 = true;
-int leng = NumPoints - 1;
+double leng = NumPoints - 1;
 double xox[NumPoints] , xoy[NumPoints] ;
 double toy[NumPoints] ;
 double ox,oy;
 double tempy;
+int ledState = LOW;
 void setup()
 {
   
@@ -53,9 +56,11 @@ delay(1000);
     Serial.println("initialization failed!");
     return;
   }
-
-  pinMode(ADJ_PIN, INPUT);
-  pinMode(tempPin, INPUT);
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, HIGH);
+  pinMode(ADJ_PIN, INPUT_PULLUP);
+  pinMode(tempPin, INPUT_PULLUP);
+  pinMode(cycAdjPin, INPUT_PULLUP);
   tft.begin(HX8357D);
   tft.fillScreen(BLACK);
   //Serial.println("initialization done.");
@@ -151,7 +156,7 @@ delay(1000);
     myFile.close();
   } else {
   	// if the file didn't open, print an error:
-    Serial.println("error opening test.txt");
+    Serial.println("error opening input.txt");
   }
   
     Serial.print("type = ");
@@ -164,19 +169,92 @@ delay(1000);
     Serial.println(minPressure);
 //  digitalWrite(LED,LOW);
 
+  char filename[12] = { '0', '0', '0', '0', '0', '0', '0', '.', 'T', 'X', 'T', '\0' };
+    for (uint8_t i = 0; i < 1000; i++) {
+        filename[4] = i / 100 + '0';
+        filename[5] = (i / 10) % 10 + '0';
+        filename[6] = i % 10 + '0';
+        if (!SD.exists(filename)) {
+            // only open a new file if it doesn't exist
+
+            myFile = SD.open(filename, FILE_WRITE);
+            break;  // leave the loop!
+        }
+    }
+myFile.close();
+//  if (! myFile) {
+//    error();
+//  }
+
     double x, t;
 
 
   tft.setRotation(3);
 
-
+long previousMillis = 0;
+long intrval = 555;
+int previousStart = 0;
 x=0;
   while(1) {
+    unsigned long currentMillis = millis();
+    if (currentMillis-previousMillis >intrval)
+    {
+      previousMillis = currentMillis;
+      if (ledState == LOW)
+       ledState=HIGH;
+      else
+       ledState=LOW;
+
+      if (ledState == HIGH)
+      {
+        
+        //write the previous cycle to the sd card
+        
+        myFile = SD.open(filename,FILE_WRITE);
+
+        if (previousStart<x)
+        {
+          for (int i = previousStart;i<x;i++)
+          {
+            //myFile.print(xox[i]);
+            //myFile.print(" , ");
+            myFile.print(xoy[i]);
+            myFile.print(" , ");
+            myFile.println(toy[i]);
+          }
+        }
+        else
+        {
+          for (int i = previousStart; i<leng;i++)
+          {
+            //myFile.print(xox[i]);
+            //myFile.print(" , ");
+            myFile.print(xoy[i]);
+            myFile.print(" , ");
+            myFile.println(toy[i]);
+          }
+          for (int i = 1; i<x; i++)
+          {
+            //myFile.print(xox[i]);
+            //myFile.print(" , ");
+            myFile.print(xoy[i]);
+            myFile.print(" , ");
+            myFile.println(toy[i]);
+          }
+        }
+        myFile.close();
+        previousStart = x;
+      }
+      
+      digitalWrite(ledPin, ledState);
+      intrval = 2 * analogRead(cycAdjPin);
+      if (intrval < 50) intrval = 50;
+    }
 x++;
 vo = analogRead(ADJ_PIN)/1023.0;
 temp = analogRead(tempPin)/1023.0;
-    Graph(tft, x, vo  , 30, 290, NumPoints, 260, 0, NumPoints, int(NumPoints/10), 0, 1.01, 0.1, "P-T", " Cycle ", "", DKBLUE, RED, GREEN, WHITE, BLACK, display7,x,0);
-    Graph(tft, x, temp, 30, 290, NumPoints, 260, 0, NumPoints, int(NumPoints/10), 0, 1.01, 0.1, "P-T", " Cycle ", "", DKBLUE, RED, YELLOW, WHITE, BLACK, display7,x,1);
+    Graph(tft, x, vo  , 30., 290., NumPoints, 260., 0., NumPoints, int(NumPoints/10.), 0., 1.01, 0.1, "P-T", " Cycle ", "", DKBLUE, RED, GREEN, WHITE, BLACK, display7,x,0);
+    Graph(tft, x, temp, 30., 290., NumPoints, 260., 0., NumPoints, int(NumPoints/10.), 0., 1.01, 0.1, "P-T", " Cycle ", "", DKBLUE, RED, YELLOW, WHITE, BLACK, display7,x,1);
     delay(10);
     if(x==leng)x=0;
   }
