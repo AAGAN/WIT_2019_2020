@@ -17,10 +17,13 @@ solenoidPin = machine.Pin.board.D4
 solenoidPin.mode(machine.Pin.OUT)
 solenoidPin.value(0)
 
-Coordinator = b'\x00\x13\xa2\x00\x41\x93\xf6\x4b' 
-EndDevice1  = b'\x00\x13\xa2\x00\x41\x92\xcd\xf3'
-EndDevice2  = b'\x00\x13\xa2\x00\x41\x95\xce\x13'
-EndDevice3  = b'\x00\x13\xa2\x00\x41\x92\xdc\x03'
+#Coordinator = b'\x00\x13\xa2\x00\x41\x93\xf6\x4b' 
+#EndDevice1  = b'\x00\x13\xa2\x00\x41\x92\xcd\xf3'
+#EndDevice2  = b'\x00\x13\xa2\x00\x41\x95\xce\x13'
+#EndDevice3  = b'\x00\x13\xa2\x00\x41\x92\xdc\x03'
+
+witEndDevice   = b'\x00\x13\xa2\x00\x41\x98\x49\xde'
+witCoordinator = b'\x00\x13\xa2\x00\x41\x97\xff\x02' #or just 0 would work too
 
 class pump:
 	def __init__(self):
@@ -92,36 +95,37 @@ class thermistor:
 		return reading
 		
 	def F(self):
-		tempF = 0
-		for _ in range(10):
-			tempF += temperaturePin.read()
-			time.sleep_ms(2)
-		tempF /= 10
-		tempF = 4095/ tempF -1
-		tempF = self.resistor / tempF
-		
-		tempF = tempF / 10000 #THERMISTORNOMINAL
-		tempF = log(tempF)
-		tempF /= 3950 #BCOEFFICIENT
-		tempF += 1.0 / (25.0 + 273.15)
-		tempF = 1.0 / tempF
-		tempF -= 273.15 # in Celcius
-		tempF = tempF*9.0/5.0+32.0
-		return tempF		
+		return temperaturePin.read()
+		#tempF = 0
+		#for _ in range(10):
+		#	tempF += temperaturePin.read()
+		#	time.sleep_ms(2)
+		#tempF /= 10
+		#tempF = 4095/ tempF -1
+		#tempF = self.resistor / tempF
+		#
+		#tempF = tempF / 10000 #THERMISTORNOMINAL
+		#tempF = log(tempF)
+		#tempF /= 3950 #BCOEFFICIENT
+		#tempF += 1.0 / (25.0 + 273.15)
+		#tempF = 1.0 / tempF
+		#tempF -= 273.15 # in Celcius
+		#tempF = tempF*9.0/5.0+32.0
+		#return tempF		
 
 #discard all the packets waiting to be read
 while xbee.receive():
 	discard = xbee.receive()
 
 #define all the objects
-pump Pump()
-pressureTransducer P()
-thermistor T()
-solenoid sol()
+Pump = pump()
+P = pressureTransducer()
+T = thermistor()
+sol = solenoid()
 
 #how to use the objects
 Pump.turnOn()
-time.sleep(20) #wait some seconds to pressurize the system
+time.sleep(5) #wait some seconds to pressurize the system
 print(P.psi())
 print(T.F())
 sol.pressurize()
@@ -132,21 +136,28 @@ time.sleep(1)
 Pump.turnOff()
 
 
-xbee.transmit(EndDevice1,'I am ready'+ '\r\n')
+#xbee.transmit(EndDevice1,'I am ready'+ '\r\n')
 def read():
 	while True:
 		p = xbee.receive()
 		if p:
+			print(p['payload'])
 			start = time.ticks_ms()
-			payload1 = str(pressurePin.read())
-			payload2 = p['payload'].decode('UTF-8')
+			payloadT = str(T.readRawADCTemperature())
+			payloadP = str(P.readRawADCPressure())
+			payload = p['payload'].decode('UTF-8')
 			#print(payload1)
-			xbee.transmit(EndDevice,50 * (payload1 +' ')+ '\r\n')
-			#xbee.transmit(EndDevice,payload1 + '\r\n')
-			solenoidPin.toggle()
-			print(time.ticks_diff(time.ticks_ms(), start))
+			if payload == 'T':
+				sol.pressurize()
+				xbee.transmit(0, payloadT  + '\r\n') #transmit temperature to the coordinator
+				time.sleep_ms(100)
+				sol.depressurize()
+			if payload == 'P':
+				sol.pressurize()
+				xbee.transmit(0, payloadP + '\r\n')
+				time.sleep_ms(100)
+				sol.depressurize()
+			print('time difference = ' + str(time.ticks_diff(time.ticks_ms(), start)) + ' milliseconds.')
 
 read()
 
-witEndDevice   = b'\x00\x13\xa2\x00\x41\x98\x49\xde'
-witCoordinator = b'\x00\x13\xa2\x00\x41\x97\xff\x02' #or just 0 would work too
