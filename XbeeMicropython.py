@@ -75,16 +75,16 @@ P = pressureTransducer()
 T = thermistor()
 sol = solenoid()
 
-def runCycle(cycleTime, fluctuations, numberOfPoints):#this function needs to be fixed
+def runCycle(cycleTime, fluctuations, numberOfPoints = 20):#this function needs to be fixed
 	global response
 	dt = cycleTime//numberOfPoints
 	response = response + str(T.read()) + ','
+	currentP = P.read()
 	sol.pressurize()
 	start = time.ticks_ms()
 	last5 = [0,0,0,0,0]
 	i = 0
-	currentP = P.read()
-	while (time.ticks_diff(time.ticks_ms(),start)<cycleTime and fabs(currentP - mean(last5)>fluctuations)):
+	while (time.ticks_diff(time.ticks_ms(),start)<=cycleTime and (fabs(currentP - mean(last5)>fluctuations) or currentP < 500)):
 		response = response + str(currentP) + ','
 		last5[i]=currentP
 		time.sleep_ms(dt)
@@ -93,7 +93,7 @@ def runCycle(cycleTime, fluctuations, numberOfPoints):#this function needs to be
 			i = 0
 		currentP = P.read()
 	sol.depressurize()
-	while (time.ticks_diff(time.ticks_ms(),start)<cycleTime):
+	while (time.ticks_diff(time.ticks_ms(),start)<=cycleTime):
 		response = response + str(P.read()) + ','
 		time.sleep_ms(dt)
 	response = response + str(T.read())
