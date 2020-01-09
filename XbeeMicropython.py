@@ -82,16 +82,16 @@ def runCycle(cycleTime, fluctuations, numberOfPoints = 20):#this function needs 
 	currentP = P.read()
 	sol.pressurize()
 	start = time.ticks_ms()
-	last5 = [0,0,0,0,0]
+	last5 = [0,0,0]
 	i = 0
 	while (time.ticks_diff(time.ticks_ms(),start)<=cycleTime and (fabs(currentP - mean(last5)>fluctuations) or currentP < 500)):
 		response = response + str(currentP) + ','
 		last5[i]=currentP
 		time.sleep_ms(dt)
 		i += 1
-		if i == 5:
+		if i == 3:
 			i = 0
-		currentP = P.read()
+		currentP = P.read() #read 5 points and average them out
 	sol.depressurize()
 	while (time.ticks_diff(time.ticks_ms(),start)<=cycleTime):
 		response = response + str(P.read()) + ','
@@ -101,14 +101,14 @@ def runCycle(cycleTime, fluctuations, numberOfPoints = 20):#this function needs 
 def sendResponse():
 	try:
 		xbee.transmit(0, response) # send to the coordinator
-		print("Data sent successfully")
+		#print("Data sent successfully")
 	except Exception as e:
 		print("Transmit failure: %s" % str(e))
 
 while True:
 	p = xbee.receive()
 	if p:
-		print(p['payload'])
+		#print(p['payload'])
 		response = ""
 		if p['payload'] == b'I':
 			Pump.On()
@@ -118,7 +118,7 @@ while True:
 			response = 'Pump turned off'
 		elif 'C' in p['payload']: #TODO: needs to be fixed
 			payloadInfo = p['payload'].split()
-			print(payloadInfo)
+			#print(payloadInfo)
 			cycleTime = int(payloadInfo[1])
 			fluctuations = int(payloadInfo[2])
 			numberOfPoints = int(payloadInfo[3])
