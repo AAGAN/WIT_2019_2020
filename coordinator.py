@@ -77,10 +77,11 @@ class Root(Tk):
         self.a.set_xlabel("time (s)")
         self.a.set_ylabel("pressure (psi)")
         self.a.set_title("Pressure variations during the last cycle")
-        self.a.grid()
+        self.a.grid(visible = True)
         self.canvas = FigureCanvasTkAgg(self.fig, self)
         self.canvas.get_tk_widget().grid(column = 12, row = 10, columnspan = 3, rowspan = 30, padx = 10, pady = 10)
         self.canvas.draw()
+        
         
         self.updateGraph() # initial call, it will call itself every some time
     
@@ -99,7 +100,6 @@ class Root(Tk):
                 o.start()
         except Exception as e:
             print(e)
-        finally:
             self.onHold = False
             self.status.set("Ready...")
     
@@ -118,7 +118,6 @@ class Root(Tk):
                 off.start()
         except Exception as e:
             print(e)
-        finally:
             self.onHold = False
             self.status.set("Ready...")
         
@@ -137,7 +136,6 @@ class Root(Tk):
                 rr.start()
         except Exception as e:
             print(e)
-        finally:
             self.onHold = False
             self.status.set("Ready...")
     
@@ -153,7 +151,8 @@ class Root(Tk):
             else:
                 append_write = 'w'
             f = open(self.fileName, append_write)
-            f.write(str(self.completedCycles) + ',')
+            if message not in ["I","O"]:
+                f.write(str(self.completedCycles+1) + ',')
             while reading:
                 xbee_message = self.coordinator.read_data()
                 if xbee_message is not None:
@@ -262,11 +261,11 @@ class Root(Tk):
             self.a.set_xlabel("time (s)")
             self.a.set_ylabel("pressure (psi)")
             self.a.set_title("Pressure variations during the last cycle")
-            self.a.grid()
+            self.a.grid(visible = True)
             self.canvas.draw()
-            self.a.plot(self.timeData.get()/1000,self.pressureData.get(),label = str(self.completedCycles+1))
+            self.a.grid(visible = True)
+            self.a.plot(self.timeData.get()/1000,self.pressureData.get(),label = str(self.completedCycles))
             self.a.legend()
-            self.a.grid()
             self.canvas.draw()
         self.after(2000, self.updateGraph) #calls itself periodically to see if there is new pressure data available to plot
 
