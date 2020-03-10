@@ -176,7 +176,7 @@ class Root(Tk):
         finally:
             if self.coordinator is not None and self.coordinator.is_open():
                 self.coordinator.close()
-                self.onHold = False
+            self.onHold = False
             self.status.set('Ready...')
             
     def turnPumpOff(self):
@@ -191,7 +191,7 @@ class Root(Tk):
         finally:
             if self.coordinator is not None and self.coordinator.is_open():
                 self.coordinator.close()
-                self.onHold = False
+            self.onHold = False
             self.status.set('Ready...')
             
     def runOneCycle(self):
@@ -255,7 +255,7 @@ class Root(Tk):
             print(e)
             
     def updateGraph(self):
-        print("updateGraph called")
+        #print("updateGraph called")
         if not self.pressureData.empty():#if updatePlot function has put some pressure data in the queue
             self.a.clear()#need to check if this works as expected
             self.a.set_xlabel("time (s)")
